@@ -36,57 +36,53 @@ if __name__ == '__main__':
 	files = os.listdir('corpus')
 	files.sort()
 
-	grid = [50, 100, 150, 200]
-	for n in grid:
+	# t: threshold
+	t = 0.55
 
-		print('Using n: ', n)
+	# k: shingle length
+	k = 4
+	shingler = Shingler(k)
 
-		# t: threshold
-		t = 0.55
+	# Document Collection
+	dc = DocumentCollection()
 
-		# k: shingle length
-		k = 4
-		shingler = Shingler(k)
+	for i, filename in enumerate(files):
+		with open('corpus/' + filename, encoding='utf8', errors='ignore') as f:
+			raw = f.read()
+			shingler.add(raw, i)
+			document = Document(i, filename)
+			dc.insert_document(document)
 
-		# Document Collection
-		dc = DocumentCollection()
+	# Perform Min Hashing
+	# t: threshold value
+	# n: number of hash functions
+	n = 100
+	b, r = getbr(n, t)
+	# Recomputing so that b * r == n
+	n = b * r
+	minhasher = MinHasher(n, dc.cnt, shingler)
 
-		for i, filename in enumerate(files):
-			with open('corpus/' + filename, encoding='utf8', errors='ignore') as f:
-				raw = f.read()
-				shingler.add(raw, i)
-				document = Document(i, filename)
-				dc.insert_document(document)
+	# Perform LSH
+	# b: number of bands
+	lsh = LSH(b, minhasher, dc)
 
-		# Perform Min Hashing
-		# t: threshold value
-		# n: number of hash functions
-		n = 100
-		b, r = getbr(n, t)
-		# Recomputing so that b * r == n
-		n = b * r
-		minhasher = MinHasher(n, dc.cnt, shingler)
+	try:
+		# Take filename as argument
+		input_docname = str(sys.argv[1])
+	except:
+		print('Usage: python main.py <filename>', 'Using default document test.txt')
+		input_docname = 'test.txt'
 
-		# Perform LSH
-		# 20 -> number of bands
-		lsh = LSH(b, minhasher, dc)
-
-		try:
-			# Take filename as argument
-			input_docname = str(sys.argv[1])
-		except:
-			input_docname = 'test.txt'
-
-		sim_docs = lsh.get_similar(input_docname)
-		avgsim = 0
-		for sim, docname in sim_docs:
-			print('Document Name: ' + str(docname), 'Similarity: ' + str(sim))
-			avgsim += sim
-		if len(sim_docs) > 0:
-			avgsim /= len(sim_docs)
-			print('Average similarity: ', avgsim)
-		else:
-			print('No documents found!')
+	sim_docs = lsh.get_similar(input_docname)
+	avgsim = 0
+	for sim, docname in sim_docs:
+		print('Document Name: ' + str(docname), 'Similarity: ' + str(sim))
+		avgsim += sim
+	if len(sim_docs) > 0:
+		avgsim /= len(sim_docs)
+		print('Average similarity: ', avgsim)
+	else:
+		print('No documents found!')
 		
 
 
